@@ -1,63 +1,75 @@
 
-import { Comment } from '@/components/CommentResponseCard';
+import { Comment } from "@/components/CommentResponseCard";
+import { openAIService } from "./openai";
 
-// Simulate document processing
-export const processDocument = (file: File): Promise<Comment[]> => {
-  return new Promise((resolve) => {
-    // Simulate processing time
-    setTimeout(() => {
-      // Mock comments for demonstration
-      const mockComments: Comment[] = [
-        {
-          id: "comment1",
-          author: "John Smith",
-          text: "This paragraph needs more clarity. What do you mean by 'innovative approach'?",
-          paragraph: "Our team has developed an innovative approach to solving this problem, combining traditional methods with cutting-edge technology.",
-          response: "By 'innovative approach', I'm referring to our unique combination of established methodologies with recent technological advances. Specifically, we've integrated machine learning algorithms with traditional statistical analysis to identify patterns that wouldn't be visible through either method alone."
-        },
-        {
-          id: "comment2",
-          author: "Sarah Johnson",
-          text: "Can you provide supporting evidence for this claim?",
-          paragraph: "Studies show that this method increases productivity by over 40% in most cases.",
-          response: "I'll add citations to the Henderson (2021) and Miller et al. (2022) studies, which demonstrated productivity improvements of 42% and 38% respectively across diverse industry settings. Both studies used control groups and statistically significant sample sizes."
-        },
-        {
-          id: "comment3",
-          author: "Michael Wong",
-          text: "This section would benefit from a real-world example.",
-          paragraph: "The application of these principles can transform organizational outcomes.",
-          response: "I'll incorporate the case study of Acme Corporation, which implemented these principles in 2022 and saw a 27% reduction in overhead costs while improving customer satisfaction scores by 15 points. This example illustrates how these abstract principles translate to measurable business outcomes."
-        },
-        {
-          id: "comment4",
-          author: "Jennifer Davis",
-          text: "Consider rephrasing for a less technical audience.",
-          paragraph: "The algorithm's heuristic optimization leverages stochastic gradient descent to minimize error propagation through the network.",
-          response: "I'll simplify this to: 'Our approach uses an advanced learning method that gradually improves accuracy by making small adjustments based on each new piece of information it processes.' This maintains the core concept while making it accessible to non-technical readers."
-        },
-        {
-          id: "comment5",
-          author: "Robert Chen",
-          text: "Check for consistency with the previous section's terminology.",
-          paragraph: "The framework consists of three primary components that work in tandem to achieve the desired outcome.",
-          response: "You're right - I'll revise this to use 'elements' rather than 'components' to maintain consistency with the terminology established in Section 2.3. I'll also ensure the names of the three elements match exactly with their earlier descriptions."
-        }
-      ];
+// Simulate document analysis and comment extraction
+export const processDocument = async (file: File): Promise<Comment[]> => {
+  // This is a mock implementation
+  // In a real app, this would extract actual comments from the document
+  
+  const mockComments: Comment[] = [
+    {
+      id: "comment-1",
+      author: "John Doe",
+      date: new Date(Date.now() - 86400000).toISOString(),
+      text: "This section could use more clarity. Can you expand on the key concepts?",
+      context: "Introduction to the methodology section that explains the approach taken for data analysis.",
+      response: ""
+    },
+    {
+      id: "comment-2",
+      author: "Jane Smith",
+      date: new Date(Date.now() - 172800000).toISOString(),
+      text: "Consider adding a figure here to illustrate this process.",
+      context: "Description of a complex multi-step process that would benefit from visual representation.",
+      response: ""
+    },
+    {
+      id: "comment-3",
+      author: "Alex Johnson",
+      date: new Date(Date.now() - 259200000).toISOString(),
+      text: "This conclusion seems too strong given the limitations discussed earlier.",
+      context: "Conclusion section that makes claims about the generalizability of the findings.",
+      response: ""
+    }
+  ];
 
-      resolve(mockComments);
-    }, 3000); // Simulate 3 second processing time
-  });
+  // Generate AI responses if API key is available
+  try {
+    if (openAIService.getApiKey()) {
+      const commentsWithResponses = await Promise.all(
+        mockComments.map(async (comment) => {
+          try {
+            const aiResponse = await openAIService.generateResponse(
+              comment.text,
+              comment.context
+            );
+            return { ...comment, response: aiResponse };
+          } catch (error) {
+            console.error(`Failed to generate response for comment ${comment.id}:`, error);
+            return comment;
+          }
+        })
+      );
+      return commentsWithResponses;
+    }
+  } catch (error) {
+    console.error("Error generating AI responses:", error);
+  }
+
+  // If no API key or generation failed, return mock responses
+  return mockComments.map(comment => ({
+    ...comment,
+    response: `This is a sample response to the comment: "${comment.text.substring(0, 30)}...". Please set an OpenAI API key to generate real responses.`
+  }));
 };
 
-// Simulate exporting the document with responses
-export const exportDocumentWithResponses = (comments: Comment[]): Promise<string> => {
-  return new Promise((resolve) => {
-    // Simulate export processing time
-    setTimeout(() => {
-      // In a real application, this would generate a .docx file
-      // For demo purposes, we're just returning a mock download URL
-      resolve("processed-document.docx");
-    }, 1500);
-  });
+// Simulate document export with responses
+export const exportDocumentWithResponses = async (comments: Comment[]): Promise<string> => {
+  // This is a mock implementation
+  // In a real app, this would create a new document with the responses
+  console.log("Exporting document with responses:", comments);
+  
+  // Simulate a download URL
+  return "processed-document.docx";
 };

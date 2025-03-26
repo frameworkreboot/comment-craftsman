@@ -1,21 +1,37 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Header from '@/components/Header';
 import FileUploader from '@/components/FileUploader';
 import ProcessingSpinner from '@/components/ProcessingSpinner';
 import CommentResponseCard, { Comment } from '@/components/CommentResponseCard';
+import ApiKeySettings from '@/components/ApiKeySettings';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
 import { processDocument, exportDocumentWithResponses } from '@/lib/docProcess';
+import { openAIService } from '@/lib/openai';
 import { Download } from 'lucide-react';
 
 const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState<'idle' | 'analyzing' | 'generating' | 'complete'>('idle');
   const [comments, setComments] = useState<Comment[]>([]);
+  const [hasApiKey, setHasApiKey] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if API key exists on component mount
+    setHasApiKey(!!openAIService.getApiKey());
+  }, []);
+
+  const handleApiKeySaved = () => {
+    setHasApiKey(true);
+    // Re-analyze the current file if one exists
+    if (file && processing === 'complete') {
+      handleFileSelected(file);
+    }
+  };
 
   const handleFileSelected = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -84,6 +100,21 @@ const Index = () => {
             <p className="text-center text-sm text-muted-foreground mt-6">
               Supported file format: Microsoft Word (.docx) files with comments
             </p>
+            
+            {/* API Key Settings */}
+            <div className="mt-8 pt-4 border-t">
+              <div className="text-center">
+                <h3 className="text-sm font-medium text-muted-foreground mb-4">Configure AI Response Generation</h3>
+                <div className="flex justify-center">
+                  <ApiKeySettings onKeySaved={handleApiKeySaved} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  {hasApiKey 
+                    ? "✓ OpenAI API key is set. Your responses will be generated using AI."
+                    : "Set your OpenAI API key to enable AI-generated responses."}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -113,7 +144,8 @@ const Index = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
+                      <ApiKeySettings onKeySaved={handleApiKeySaved} />
                       <Button variant="outline" onClick={handleReset}>
                         Process another document
                       </Button>
