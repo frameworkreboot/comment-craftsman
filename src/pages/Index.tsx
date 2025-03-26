@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Header from '@/components/Header';
@@ -38,7 +37,7 @@ const Index = () => {
     setProcessing('analyzing');
     
     try {
-      // Simulate document analysis and response generation
+      // Process document and extract comments
       setTimeout(() => setProcessing('generating'), 1500);
       const processedComments = await processDocument(selectedFile);
       
@@ -47,6 +46,7 @@ const Index = () => {
         setProcessing('complete');
       }, 1500);
     } catch (error) {
+      console.error("Error processing file:", error);
       toast({
         title: "Processing error",
         description: "There was an error processing your document",
@@ -63,17 +63,38 @@ const Index = () => {
   };
 
   const handleExport = async () => {
+    if (!file) {
+      toast({
+        title: "Export error",
+        description: "No document to export",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      const downloadUrl = await exportDocumentWithResponses(comments);
+      const exportBlob = await exportDocumentWithResponses(comments, file);
+      
+      // Create a download link and trigger it
+      const downloadUrl = URL.createObjectURL(exportBlob);
+      const filename = `${file.name.split('.')[0]}_with_responses.txt`;
+      
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = filename;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      // Clean up the URL object
+      URL.revokeObjectURL(downloadUrl);
       
       toast({
         title: "Export successful",
-        description: "Your document has been processed successfully",
+        description: "Your document with responses has been downloaded",
       });
-      
-      // In a real application, this would trigger a download
-      console.log("Document would download as:", downloadUrl);
     } catch (error) {
+      console.error("Export error:", error);
       toast({
         title: "Export error",
         description: "There was an error exporting your document",
@@ -98,7 +119,7 @@ const Index = () => {
             <h2 className="text-xl font-medium text-center mb-6">Upload a document with comments</h2>
             <FileUploader onFileSelected={handleFileSelected} />
             <p className="text-center text-sm text-muted-foreground mt-6">
-              Supported file format: Microsoft Word (.docx) files with comments
+              Supported file formats: Text (.txt), Microsoft Word (.docx) files with comments
             </p>
             
             {/* API Key Settings */}
@@ -125,7 +146,7 @@ const Index = () => {
                 <ProcessingSpinner status={processing} />
                 <p className="mt-4 text-sm text-muted-foreground">
                   {processing === 'analyzing' 
-                    ? "Analyzing document content and comments..." 
+                    ? "Analyzing document content and extracting comments..." 
                     : "Generating contextually appropriate responses..."}
                 </p>
               </div>
@@ -160,7 +181,7 @@ const Index = () => {
                 <div className="space-y-2">
                   <h3 className="text-lg font-medium px-1">Review and edit responses</h3>
                   <p className="text-sm text-muted-foreground px-1 mb-4">
-                    We've generated draft responses based on the document context and your writing style. Review and edit before exporting.
+                    We've generated draft responses based on the document context and comments. Review and edit before exporting.
                   </p>
                   
                   <div className="space-y-6">
