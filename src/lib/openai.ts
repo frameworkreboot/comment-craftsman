@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 interface OpenAIResponse {
@@ -45,6 +44,8 @@ export class OpenAIService {
     }
 
     try {
+      console.log("Calling OpenAI API with comment:", comment.substring(0, 50) + "...");
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -52,15 +53,27 @@ export class OpenAIService {
           'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system", 
-              content: "You are an assistant helping to draft responses to comments in a document. Provide concise, constructive responses that address the comment directly."
+              content: "You are an assistant helping to draft responses to comments in a document. Provide concise, constructive responses that directly address the comment and relate to the specific text being commented on. Your responses should be professional, helpful, and show understanding of both the comment's intent and the document context."
             },
             {
               role: "user",
-              content: `Document context: ${documentContext}\n\nComment: ${comment}\n\nPlease draft a response to this comment that is professional, helpful, and addresses the comment directly.`
+              content: `
+Document excerpt that is being commented on:
+"""
+${documentContext}
+"""
+
+Comment by reviewer: "${comment}"
+
+Please draft a response to this comment that:
+1. Acknowledges the specific point raised in the comment
+2. References relevant parts of the document text when appropriate
+3. Provides a clear, professional reply that addresses the concern or suggestion
+4. Is concise and to the point (typically 2-4 sentences)`
             }
           ],
           temperature: 0.7,
@@ -68,11 +81,13 @@ export class OpenAIService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || "Failed to generate response");
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        throw new Error(errorData.error?.message || "Failed to generate response");
       }
 
       const data = await response.json() as OpenAIResponse;
+      console.log("OpenAI response received successfully");
       return data.choices[0].message.content.trim();
     } catch (error) {
       console.error("Error generating response:", error);

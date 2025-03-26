@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -22,6 +21,11 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onKeySaved }) => {
     // Check if key exists in localStorage
     const savedKey = openAIService.getApiKey();
     setHasKey(!!savedKey);
+    if (savedKey) {
+      console.log("API key found in storage");
+    } else {
+      console.log("No API key found in storage");
+    }
   }, []);
 
   const handleSave = () => {
@@ -35,6 +39,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onKeySaved }) => {
     }
 
     try {
+      console.log("Saving API key");
       openAIService.setApiKey(apiKey.trim());
       setIsOpen(false);
       setHasKey(true);
@@ -48,6 +53,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onKeySaved }) => {
         onKeySaved();
       }
     } catch (error) {
+      console.error("Error saving API key:", error);
       toast({
         title: "Error Saving Key",
         description: "There was an error saving your API key",

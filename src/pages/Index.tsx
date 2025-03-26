@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Header from '@/components/Header';
@@ -74,17 +73,54 @@ const Index = () => {
     addDebugInfo(`Starting to process file: ${selectedFile.name} (${selectedFile.type})`);
     
     try {
+      // Check for API key first
+      const apiKey = openAIService.getApiKey();
+      if (!apiKey) {
+        addDebugInfo("OpenAI API key not found. Please enter your API key.");
+        toast({
+          title: "API Key Required",
+          description: "Please enter your OpenAI API key in the settings to generate responses.",
+          variant: "destructive",
+        });
+        setProcessing('idle');
+        return;
+      }
+      
       // Process document and extract comments
       addDebugInfo('Extracting text from document...');
-      setTimeout(() => setProcessing('generating'), 1500);
-      
-      const processedComments = await processDocument(selectedFile);
-      addDebugInfo(`Extracted ${processedComments.length} comments from document`);
-      
-      setTimeout(() => {
-        setComments(processedComments);
-        setProcessing('complete');
-        addDebugInfo('Processing complete');
+      setTimeout(async () => {
+        try {
+          const extractedComments = await processDocument(selectedFile);
+          addDebugInfo(`Extracted ${extractedComments.length} comments from document`);
+          
+          if (extractedComments.length > 0) {
+            addDebugInfo('Generating responses...');
+            setProcessing('generating');
+            
+            // Log if responses were actually generated
+            const hasResponses = extractedComments.some(c => c.response.length > 0);
+            addDebugInfo(`Responses generated: ${hasResponses ? 'Yes' : 'No'}`);
+            
+            setComments(extractedComments);
+            setProcessing('complete');
+          } else {
+            addDebugInfo('No comments found in document');
+            toast({
+              title: "No Comments Found",
+              description: "No comments were found in the uploaded document",
+            });
+            setProcessing('idle');
+          }
+        } catch (error) {
+          console.error("Error in document processing:", error);
+          addDebugInfo(`Error: ${error instanceof Error ? error.message : String(error)}`);
+          toast({
+            title: "Processing error",
+            description: "There was an error processing your document",
+            variant: "destructive",
+          });
+          setProcessing('idle');
+        }
       }, 1500);
     } catch (error) {
       console.error("Error processing file:", error);
@@ -105,44 +141,31 @@ const Index = () => {
   };
 
   const handleExport = async () => {
-    if (!file) {
+    if (!file || comments.length === 0) {
       toast({
-        title: "Export error",
-        description: "No document to export",
+        title: "Nothing to export",
+        description: "Please process a document with comments first",
         variant: "destructive",
       });
       return;
     }
     
     try {
-      addDebugInfo('Starting export process...');
-      const exportBlob = await exportDocumentWithResponses(comments, file);
+      addDebugInfo('Exporting document with responses...');
+      await exportDocumentWithResponses(comments, file);
+      addDebugInfo('Document exported successfully');
       
-      // Create a download link and trigger it
-      const downloadUrl = URL.createObjectURL(exportBlob);
-      const filename = `${file.name.split('.')[0]}_with_responses.txt`;
-      
-      const downloadLink = document.createElement('a');
-      downloadLink.href = downloadUrl;
-      downloadLink.download = filename;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      
-      // Clean up the URL object
-      URL.revokeObjectURL(downloadUrl);
-      
-      addDebugInfo(`Export successful: ${filename}`);
       toast({
-        title: "Export successful",
-        description: "Your document with responses has been downloaded",
+        title: "Export Complete",
+        description: "Document with responses has been downloaded",
       });
     } catch (error) {
-      console.error("Export error:", error);
-      addDebugInfo(`Export error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Error exporting document:", error);
+      addDebugInfo(`Error exporting document: ${error instanceof Error ? error.message : String(error)}`);
+      
       toast({
-        title: "Export error",
-        description: "There was an error exporting your document",
+        title: "Export Failed",
+        description: "There was an error exporting the document",
         variant: "destructive",
       });
     }
@@ -221,9 +244,14 @@ const Index = () => {
                       <Button variant="outline" onClick={handleReset}>
                         Process another document
                       </Button>
-                      <Button className="gap-2" onClick={handleExport}>
-                        <Download className="h-4 w-4" />
-                        Export with responses
+                      <Button 
+                        onClick={handleExport} 
+                        disabled={!file || comments.length === 0 || processing !== 'complete'}
+                        variant="default"
+                        className="whitespace-nowrap"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Export with replies
                       </Button>
                     </div>
                   </div>
@@ -246,9 +274,14 @@ const Index = () => {
                   </div>
                   
                   <div className="mt-8 pt-4 flex justify-end">
-                    <Button className="gap-2" onClick={handleExport}>
-                      <Download className="h-4 w-4" />
-                      Export with responses
+                    <Button 
+                      onClick={handleExport} 
+                      disabled={!file || comments.length === 0 || processing !== 'complete'}
+                      variant="default"
+                      className="whitespace-nowrap"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Export with replies
                     </Button>
                   </div>
                 </div>
