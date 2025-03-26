@@ -10,8 +10,9 @@ export interface Comment {
   id: string;
   author: string;
   text: string;
-  paragraph: string;
+  context: string;
   response: string;
+  date?: string; // Making date optional to match usage in docProcess.ts
 }
 
 interface CommentResponseCardProps {
@@ -50,7 +51,13 @@ const CommentResponseCard: React.FC<CommentResponseCardProps> = ({
               <p>{comment.text}</p>
             </div>
             <div className="text-xs text-muted-foreground italic">
-              <p>Referring to: <span className="font-medium truncate">{comment.paragraph.substring(0, 100)}...</span></p>
+              <p>
+                Referring to: <span className="font-medium truncate">
+                  {comment.context && comment.context.length > 0 
+                    ? `${comment.context.substring(0, 100)}...`
+                    : "No context available"}
+                </span>
+              </p>
             </div>
           </div>
 
