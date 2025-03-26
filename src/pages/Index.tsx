@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Header from '@/components/Header';
@@ -10,18 +11,51 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
 import { processDocument, exportDocumentWithResponses } from '@/lib/docProcess';
 import { openAIService } from '@/lib/openai';
-import { Download } from 'lucide-react';
+import { Download, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState<'idle' | 'analyzing' | 'generating' | 'complete'>('idle');
   const [comments, setComments] = useState<Comment[]>([]);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{message: string, timestamp: Date}[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const { toast } = useToast();
+  
+  const addDebugInfo = (message: string) => {
+    setDebugInfo(prev => [...prev, {message, timestamp: new Date()}]);
+  };
 
   useEffect(() => {
     // Check if API key exists on component mount
     setHasApiKey(!!openAIService.getApiKey());
+    
+    // Set up console log listener for debugging
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    
+    console.log = (...args) => {
+      originalConsoleLog(...args);
+      addDebugInfo(`LOG: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+    };
+    
+    console.error = (...args) => {
+      originalConsoleError(...args);
+      addDebugInfo(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+    };
+    
+    console.warn = (...args) => {
+      originalConsoleWarn(...args);
+      addDebugInfo(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+    };
+    
+    return () => {
+      // Restore original console methods
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
+    };
   }, []);
 
   const handleApiKeySaved = () => {
@@ -35,18 +69,26 @@ const Index = () => {
   const handleFileSelected = async (selectedFile: File) => {
     setFile(selectedFile);
     setProcessing('analyzing');
+    setDebugInfo([]);
+    
+    addDebugInfo(`Starting to process file: ${selectedFile.name} (${selectedFile.type})`);
     
     try {
       // Process document and extract comments
+      addDebugInfo('Extracting text from document...');
       setTimeout(() => setProcessing('generating'), 1500);
+      
       const processedComments = await processDocument(selectedFile);
+      addDebugInfo(`Extracted ${processedComments.length} comments from document`);
       
       setTimeout(() => {
         setComments(processedComments);
         setProcessing('complete');
+        addDebugInfo('Processing complete');
       }, 1500);
     } catch (error) {
       console.error("Error processing file:", error);
+      addDebugInfo(`Error processing file: ${error instanceof Error ? error.message : String(error)}`);
       toast({
         title: "Processing error",
         description: "There was an error processing your document",
@@ -73,6 +115,7 @@ const Index = () => {
     }
     
     try {
+      addDebugInfo('Starting export process...');
       const exportBlob = await exportDocumentWithResponses(comments, file);
       
       // Create a download link and trigger it
@@ -89,12 +132,14 @@ const Index = () => {
       // Clean up the URL object
       URL.revokeObjectURL(downloadUrl);
       
+      addDebugInfo(`Export successful: ${filename}`);
       toast({
         title: "Export successful",
         description: "Your document with responses has been downloaded",
       });
     } catch (error) {
       console.error("Export error:", error);
+      addDebugInfo(`Export error: ${error instanceof Error ? error.message : String(error)}`);
       toast({
         title: "Export error",
         description: "There was an error exporting your document",
@@ -107,6 +152,12 @@ const Index = () => {
     setFile(null);
     setComments([]);
     setProcessing('idle');
+    setDebugInfo([]);
+    addDebugInfo('Reset application state');
+  };
+
+  const toggleDebugPanel = () => {
+    setShowDebugPanel(!showDebugPanel);
   };
 
   return (
@@ -203,6 +254,44 @@ const Index = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* Debug Panel Button */}
+        <div className="fixed bottom-4 right-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1 bg-white/80" 
+            onClick={toggleDebugPanel}
+          >
+            <Bug className="h-4 w-4" />
+            Debug
+            {showDebugPanel ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+          </Button>
+        </div>
+        
+        {/* Debug Panel */}
+        {showDebugPanel && (
+          <div className="fixed bottom-14 right-4 w-96 max-h-96 overflow-auto bg-white/90 backdrop-blur-sm rounded-lg border shadow-lg p-4">
+            <h3 className="font-medium text-sm mb-2 flex justify-between">
+              <span>Document Processing Logs</span>
+              <span className="text-xs text-muted-foreground">
+                {debugInfo.length} entries
+              </span>
+            </h3>
+            <div className="space-y-2 text-xs font-mono overflow-y-auto max-h-80">
+              {debugInfo.length > 0 ? (
+                debugInfo.map((info, index) => (
+                  <div key={index} className={`p-1 rounded ${info.message.includes('ERROR') ? 'bg-red-50 text-red-800' : info.message.includes('WARN') ? 'bg-amber-50 text-amber-800' : 'bg-gray-50'}`}>
+                    <span className="text-gray-500">[{info.timestamp.toLocaleTimeString()}]</span>{' '}
+                    {info.message}
+                  </div>
+                ))
+              ) : (
+                <div className="text-muted-foreground italic">No logs available yet</div>
+              )}
+            </div>
           </div>
         )}
       </div>

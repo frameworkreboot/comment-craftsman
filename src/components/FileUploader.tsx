@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-import { FileUp, X } from 'lucide-react';
+import { FileUp, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FileUploaderProps {
@@ -18,6 +18,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileWarning, setFileWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -32,8 +33,12 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   };
 
   const validateFile = (file: File): boolean => {
+    setFileWarning(null);
+    
     // Check file type
     const fileType = file.name.split('.').pop()?.toLowerCase();
+    const expectedType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    
     if (fileType !== 'docx') {
       toast({
         title: "Invalid file type",
@@ -41,6 +46,12 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         variant: "destructive",
       });
       return false;
+    }
+    
+    // For demo purposes, allow other file types with a warning
+    if (file.type !== expectedType) {
+      console.warn(`File MIME type (${file.type}) doesn't match expected Word document type (${expectedType})`);
+      setFileWarning("This doesn't appear to be a Word document based on its content type, but we'll try to process it anyway.");
     }
 
     // Check file size
@@ -53,6 +64,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       return false;
     }
 
+    // Accept the file even if it might not be a Word document (for testing)
     return true;
   };
 
@@ -87,6 +99,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
+    setFileWarning(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -140,7 +153,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               <div className="truncate">
                 <p className="font-medium truncate max-w-[220px]">{selectedFile.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {selectedFile.type || "Unknown type"}
                 </p>
               </div>
             </div>
@@ -153,6 +166,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               <X className="h-4 w-4" />
             </Button>
           </div>
+          
+          {fileWarning && (
+            <div className="mt-3 p-2 bg-amber-50 text-amber-800 rounded-md text-xs flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{fileWarning}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

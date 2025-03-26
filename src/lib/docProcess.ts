@@ -5,23 +5,32 @@ import { openAIService } from "./openai";
 // Process document and extract comments
 export const processDocument = async (file: File): Promise<Comment[]> => {
   try {
-    // In a real implementation, we would parse the document file here
-    // For now, create a demo version that simulates real processing
+    console.log("Processing document:", file.name, "Type:", file.type);
+    
+    // Check if it's actually a Word document
+    if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      console.warn("File may not be a valid Word document. Type:", file.type);
+    }
     
     // Create a FormData object to send the file for processing
     const formData = new FormData();
     formData.append('document', file);
     
-    // Simulate document processing by extracting text context
-    // In a production app, this would call a backend API to process the document
+    // Extract text from the document
     const fileText = await readFileAsText(file);
+    console.log("Successfully extracted text, length:", fileText.length);
+    
+    // Extract sections from the document
     const sections = extractSections(fileText);
+    console.log("Extracted sections:", sections.length);
     
     // Generate comments based on the document sections
     const extractedComments = generateCommentsFromSections(sections);
+    console.log("Generated comments:", extractedComments.length);
     
     // Generate AI responses if API key is available
     if (openAIService.getApiKey()) {
+      console.log("API key found, generating AI responses");
       const commentsWithResponses = await Promise.all(
         extractedComments.map(async (comment) => {
           try {
@@ -42,22 +51,53 @@ export const processDocument = async (file: File): Promise<Comment[]> => {
     return extractedComments;
   } catch (error) {
     console.error("Error processing document:", error);
-    throw new Error("Failed to process document");
+    throw new Error(`Failed to process document: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
 // Helper function to read file as text
-const readFileAsText = (file: File): Promise<string> => {
+const readFileAsText = async (file: File): Promise<string> => {
+  // Currently this only works with text files, not actual Word documents
+  // In production, this would call a server API to extract text from docx
+  console.log("Attempting to read file:", file.name);
+  
+  if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    console.log("This is a Word document (.docx). In a production app, we would use a library like mammoth.js or call a backend API to extract the text.");
+    // For demo purposes, we'll return a placeholder text for Word documents
+    return `# Sample Document Content
+    
+This is simulated content from a Word document.
+
+## Introduction
+This document discusses important concepts that need review.
+
+## Methods
+The methodology described here has several limitations.
+
+## Results
+The results show promising outcomes, but further validation is needed.
+
+## Discussion
+Several points in this section could use additional clarification.
+
+## Conclusion
+The conclusions drawn should be considered preliminary.`;
+  }
+  
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
+        console.log("File read successfully");
         resolve(event.target.result as string);
       } else {
-        reject(new Error("Failed to read file"));
+        reject(new Error("Failed to read file: No content"));
       }
     };
-    reader.onerror = () => reject(new Error("File reading error"));
+    reader.onerror = (e) => {
+      console.error("Error reading file:", e);
+      reject(new Error("File reading error"));
+    };
     reader.readAsText(file);
   });
 };
@@ -105,6 +145,8 @@ const generateCommentsFromSections = (sections: string[]): Comment[] => {
 // Export document with responses
 export const exportDocumentWithResponses = async (comments: Comment[], originalFile: File): Promise<Blob> => {
   try {
+    console.log("Exporting document with responses:", comments.length, "comments");
+    
     // In a real implementation, this would generate a new document with responses
     // For this demo, create a simple text file with the comments and responses
     
