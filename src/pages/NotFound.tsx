@@ -1,6 +1,6 @@
 
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
@@ -24,9 +24,10 @@ const NotFound = () => {
         <h1 className="text-3xl font-medium mb-3">Page not found</h1>
         <p className="text-muted-foreground mb-6">
           The page you're looking for doesn't exist or has been moved.
+          Current path: {location.pathname}
         </p>
         <Button asChild>
-          <a href="/">Return to Home</a>
+          <Link to="/">Return to Home</Link>
         </Button>
       </div>
     </Layout>
